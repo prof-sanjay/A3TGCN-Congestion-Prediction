@@ -17,7 +17,7 @@ import numpy as np
 import math
 import os
 import numpy.linalg as la
-from input_data import preprocess_data,load_metr_data
+from input_data import (preprocess_data, load_pems_data)
 from tgcn import tgcnCell
 from gru import GRUCell 
 
@@ -32,14 +32,14 @@ time_start = time.time()
 ###### Settings ######
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.005, 'Initial learning rate.')
-flags.DEFINE_integer('training_epoch', 20, 'Number of epochs to train.')
+flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
+flags.DEFINE_integer('training_epoch', 10, 'Number of epochs to train.')
 flags.DEFINE_integer('gru_units', 100, 'hidden units of gru.')
-flags.DEFINE_integer('seq_len', 12, 'time length of inputs.')
+flags.DEFINE_integer('seq_len', 7, 'time length of inputs.')
 flags.DEFINE_integer('pre_len', 1, 'time length of prediction.')
 flags.DEFINE_float('train_rate', 0.8, 'rate of training set.')
-flags.DEFINE_integer('batch_size', 16, 'batch size.')
-flags.DEFINE_string('dataset', 'metr', 'metr dataset')
+flags.DEFINE_integer('batch_size', 64, 'batch size.')
+flags.DEFINE_string('dataset', 'pemsbay', 'pemsbay dataset')
 flags.DEFINE_string('model_name', 'TGCN_att','TGCN_att')
 model_name = FLAGS.model_name
 data_name = FLAGS.dataset
@@ -52,7 +52,7 @@ training_epoch = FLAGS.training_epoch
 gru_units = FLAGS.gru_units
 
 ###### load data ######
-data,adj=load_metr_data()
+data,adj = load_pems_data(data_name)
 
 print("Data:",data.shape)
 print("Adj:",adj.shape)
@@ -109,12 +109,12 @@ def self_attention1(x, weight_att,bias_att):
     print('s',s)
 
     beta = tf.nn.softmax(s, dim=-1)  # attention map
-    print('beta',beta)
+    print('bata',beta)
     context = tf.expand_dims(beta,2) * tf.reshape(x,[-1,seq_len,num_nodes])
 
     context = tf.transpose(context,perm=[0,2,1])
     print('context', context)
-    return context, beta
+    return context, beta 
  
 
 ###### placeholders ######
@@ -148,22 +148,18 @@ label = tf.reshape(labels, [-1,num_nodes])
 loss = tf.reduce_mean(tf.nn.l2_loss(y_pred-label) + Lreg)
 ##rmse
 error = tf.sqrt(tf.reduce_mean(tf.square(y_pred-label)))
-lr_var = tf.Variable(lr, trainable=False, dtype=tf.float32)
-
-optimizer = tf.train.AdamOptimizer(
-    learning_rate=lr_var
-).minimize(loss)
+optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
 
 ###### Initialize session ######
 variables = tf.global_variables()
 saver = tf.train.Saver(tf.global_variables())  
 #sess = tf.Session()
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 sess.run(tf.global_variables_initializer())
 
 #out = 'out/%s'%(model_name)
-out = 'out2/%s'%(model_name)
+out = 'out3/%s'%(model_name)
 path1 = '%s_%s_lr%r_batch%r_unit%r_seq%r_pre%r_epoch%r'%(model_name,data_name,lr,batch_size,gru_units,seq_len,pre_len,training_epoch)
 path = os.path.join(out,path1)
 if not os.path.exists(path):
@@ -192,12 +188,6 @@ def extract_batch_size(_train, step, batch_size):
    
 x_axe,batch_loss,batch_rmse,batch_pred = [], [], [], []
 test_loss,test_rmse,test_mae,test_acc,test_r2,test_var,test_pred = [],[],[],[],[],[],[]
-
-best_rmse = float('inf')
-bad_epochs = 0
-patience = 3
-factor = 0.5
-min_lr = 1e-5
   
 for epoch in range(training_epoch):
     for m in range(totalbatch):
@@ -209,40 +199,26 @@ for epoch in range(training_epoch):
         batch_rmse.append(rmse1 * max_value)
 
      # Test completely at every epoch
-    loss2, rmse2, test_output = sess.run([loss, error, y_pred],
-                                         feed_dict = {inputs:testX, labels:testY})
+    test_output_all=[]
+
+for i in range(0,len(testX),batch_size):
+
+    batch_x = testX[i:i+batch_size]
+    batch_y = testY[i:i+batch_size]
+
+    pred_batch = sess.run(
+        y_pred,
+        feed_dict={
+            inputs:batch_x,
+            labels:batch_y
+        })
+
+    test_output_all.append(pred_batch)
+
+    test_output=np.vstack(test_output_all)
+
     test_label = np.reshape(testY,[-1,num_nodes])
     rmse, mae, acc, r2_score, var_score = evaluation(test_label, test_output)
-    # Check whether RMSE improved
-    if rmse < best_rmse:
-        best_rmse = rmse
-        bad_epochs = 0
-    else:
-        bad_epochs += 1
-
-    if bad_epochs >= patience:
-        current_lr = sess.run(lr_var)
-        new_lr = max(
-            current_lr * factor,
-            min_lr
-        )
-
-        sess.run(
-            tf.assign(
-                lr_var,
-                new_lr
-            )
-        )
-
-        print(
-            "Learning rate reduced:",
-            current_lr,
-            "->",
-            new_lr
-        )
-
-        bad_epochs = 0
-
     test_label1 = test_label * max_value
     test_output1 = test_output * max_value
     test_loss.append(loss2)
@@ -254,16 +230,11 @@ for epoch in range(training_epoch):
     test_var.append(var_score)
     test_pred.append(test_output1)
     
-    print(
-        'Iter:{}'.format(epoch),
-          'lr:{:.6f}'.format(
-        sess.run(lr_var)
-        ),
-    'train_rmse:{:.4}'.format(batch_rmse[-1]),
-    'test_loss:{:.4}'.format(loss2),
-    'test_rmse:{:.4}'.format(rmse),
-    'test_acc:{:.4}'.format(acc)
-    )
+    print('Iter:{}'.format(epoch),
+          'train_rmse:{:.4}'.format(batch_rmse[-1]),
+          'test_loss:{:.4}'.format(loss2),
+          'test_rmse:{:.4}'.format(rmse),
+          'test_acc:{:.4}'.format(acc))
     
     if (epoch % 500 == 0):        
         saver.save(sess, path+'/model_100/graphGRU_pre_%r'%epoch, global_step = epoch)
