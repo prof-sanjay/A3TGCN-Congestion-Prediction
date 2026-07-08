@@ -13,7 +13,57 @@ BASE_DIR = os.path.abspath(
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 
-def load_sz_data(dataset):
+def load_pems_data(dataset):
+
+    print("Loading PEMS...")
+
+    data = np.load(
+        "../data/PEMSBAY/PEMSBAY_2022.npy",
+        allow_pickle=True
+    )
+
+    print("Raw shape:", data.shape)
+
+    # If there is an extra feature dimension
+    if len(data.shape) == 3:
+        data = data[:,:,1]
+
+    print("Processed shape:", data.shape)
+
+    with open(
+        "../data/PEMSBAY/adj_mx_bay.pkl",   
+        "rb"
+    ) as f:
+
+        sensor_ids, sensor_dict, adj = pkl.load(
+            f,
+            encoding='latin1'
+        )
+
+    print("Adj shape:", adj.shape)
+
+    return data, adj
+
+def load_metr_data():
+
+    data = pd.read_hdf(
+        "../data/METR-LA/metr-la.h5"
+    )
+
+    data = data.values
+
+    with open(
+        "../data/METR-LA/adj_mx.pkl",
+        "rb"
+    ) as f:
+
+        adj = pkl.load(f)
+
+    return data,adj
+
+
+
+def load_sz_data():
     sz_adj = pd.read_csv(
         os.path.join(DATA_DIR, "sz_adj.csv"),
         header=None
@@ -24,7 +74,10 @@ def load_sz_data(dataset):
         os.path.join(DATA_DIR, "sz_speed.csv")
     )
 
+
     return sz_tf, adj
+
+
 
 
 def load_los_data(dataset):

@@ -32,8 +32,8 @@ time_start = time.time()
 ###### Settings ######
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
-flags.DEFINE_integer('training_epoch', 1, 'Number of epochs to train.')
+flags.DEFINE_float('learning_rate', 0.005, 'Initial learning rate.')
+flags.DEFINE_integer('training_epoch', 100, 'Number of epochs to train.')
 flags.DEFINE_integer('gru_units', 100, 'hidden units of gru.')
 flags.DEFINE_integer('seq_len', 7, 'time length of inputs.')
 flags.DEFINE_integer('pre_len', 1, 'time length of prediction.')
@@ -52,7 +52,7 @@ training_epoch = FLAGS.training_epoch
 gru_units = FLAGS.gru_units
 
 ###### load data ######
-data,adj = load_sz_data(data_name)
+data,adj = load_sz_data()
 
 print("Data:",data.shape)
 print("Adj:",adj.shape)
@@ -160,7 +160,10 @@ label = tf.reshape(labels, [-1,num_nodes])
 loss = tf.reduce_mean(tf.nn.l2_loss(y_pred-label) + Lreg)
 ##rmse
 error = tf.sqrt(tf.reduce_mean(tf.square(y_pred-label)))
-optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
+
+lr_var = tf.Variable(lr, trainable=False, dtype=tf.float32)
+
+optimizer = tf.train.AdamOptimizer(lr_var).minimize(loss)
 
 ###### Initialize session ######
 variables = tf.global_variables()
@@ -200,6 +203,14 @@ def extract_batch_size(_train, step, batch_size):
    
 x_axe,batch_loss,batch_rmse,batch_pred = [], [], [], []
 test_loss,test_rmse,test_mae,test_acc,test_r2,test_var,test_pred = [],[],[],[],[],[],[]
+
+#dynamic learning rate
+
+best_rmse = float('inf')
+bad_epochs = 0
+patience = 5
+factor = 0.5
+min_lr = 1e-5
   
 for epoch in range(training_epoch):
     for m in range(totalbatch):
@@ -215,6 +226,38 @@ for epoch in range(training_epoch):
                                          feed_dict = {inputs:testX, labels:testY})
     test_label = np.reshape(testY,[-1,num_nodes])
     rmse, mae, acc, r2_score, var_score = evaluation(test_label, test_output)
+
+    #check whether rmse improved
+
+    if rmse < best_rmse:
+        best_rmse = rmse
+        bad_epochs = 0
+    else:
+        bad_epochs += 1
+
+    if bad_epochs >= patience:
+        current_lr = sess.run(lr_var)
+        new_lr = max(
+            current_lr * factor,
+            min_lr
+        )
+
+        sess.run(
+            tf.assign(
+                lr_var,
+                new_lr
+            )
+        )
+
+        print(
+            "Learning rate reduced:",
+            current_lr,
+            "->",
+            new_lr
+        )
+
+        bad_epochs = 0
+
     test_label1 = test_label * max_value
     test_output1 = test_output * max_value
     test_loss.append(loss2)
@@ -271,6 +314,7 @@ plot_error(train_rmse,train_loss,test_rmse,test_acc,test_mae,path)
 
 fig1 = plt.figure(figsize=(7,3))
 ax1 = fig1.add_subplot(1,1,1)
+print(alpha1.shape)
 plt.plot(np.sum(alpha1,0))
 plt.savefig(path+'/alpha.jpg',dpi=500)
 plt.show()
