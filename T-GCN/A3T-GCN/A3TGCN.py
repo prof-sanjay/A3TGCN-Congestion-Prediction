@@ -35,7 +35,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.005, 'Initial learning rate.')
 flags.DEFINE_integer('training_epoch', 100, 'Number of epochs to train.')
 flags.DEFINE_integer('gru_units', 100, 'hidden units of gru.')
-flags.DEFINE_integer('seq_len', 7, 'time length of inputs.')
+flags.DEFINE_integer('seq_len', 12, 'time length of inputs.')
 flags.DEFINE_integer('pre_len', 1, 'time length of prediction.')
 flags.DEFINE_float('train_rate', 0.8, 'rate of training set.')
 flags.DEFINE_integer('batch_size', 64, 'batch size.')
