@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+tf-env/
+venv/
+.venv/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Output
+out/
+out2/
+
+# TensorFlow
+checkpoint
+*.ckpt*
+events.out.tfevents.*
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Models
+*.h5
+*.pth
+*.pt
+*.pb
