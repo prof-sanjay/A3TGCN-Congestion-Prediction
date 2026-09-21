@@ -45,11 +45,6 @@ dist/
 *.npz
 *.hdf5
 *.h5
-# Research datasets
-T-GCN/data/
 
-# Research datasets
-T-GCN/data/
-
-# Generated validation output
-T-GCN/A3T-GCN/validation/outpemsdyn5/
+# Data
+Congestion Prediction Project\T-GCN\data
