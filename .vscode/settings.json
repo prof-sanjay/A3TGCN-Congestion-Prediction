@@ -1,6 +1,0 @@
-{
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python.analysis.extraPaths": [
-        "./T-GCN/T-GCN-TensorFlow"
-    ]
-}

@@ -13,37 +13,33 @@ BASE_DIR = os.path.abspath(
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 
-def load_pems_data(dataset):
+def load_pems_data():
 
     print("Loading PEMS...")
 
-    data = np.load(
-        "../data/PEMSBAY/PEMSBAY_2022.npy",
-        allow_pickle=True
+    data = pd.read_hdf(
+        "../data/PeMS-BAY-2022/pems-bay.h5",
+        key="speed"
     )
 
     print("Raw shape:", data.shape)
 
-    # If there is an extra feature dimension
-    if len(data.shape) == 3:
-        data = data[:,:,1]
+    data = data.values
 
     print("Processed shape:", data.shape)
 
     with open(
-        "../data/PEMSBAY/adj_mx_bay.pkl",   
+        "../data/PeMS-BAY-2022/adj_mx_bay.pkl",
         "rb"
     ) as f:
-
         sensor_ids, sensor_dict, adj = pkl.load(
             f,
-            encoding='latin1'
+            encoding="latin1"
         )
 
     print("Adj shape:", adj.shape)
 
     return data, adj
-
 def load_metr_data():
 
     data = pd.read_hdf(
@@ -78,8 +74,6 @@ def load_sz_data():
     return sz_tf, adj
 
 
-
-
 def load_los_data(dataset):
     los_adj = pd.read_csv(
         os.path.join(DATA_DIR, "los_adj.csv"),
@@ -88,10 +82,15 @@ def load_los_data(dataset):
     adj = np.mat(los_adj)
 
     los_tf = pd.read_csv(
-        os.path.join(DATA_DIR, "los_speed.csv")
+        os.path.join(DATA_DIR, "los_speed.csv"),
+        header=None
     )
 
+    # First row contains sensor IDs, not speed values
+    los_tf = los_tf.iloc[1:, :]
+
     return los_tf, adj
+
 
 
 def preprocess_data(data, time_len, rate, seq_len, pre_len):

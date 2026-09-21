@@ -38,3 +38,4 @@ dist/
 *.pth
 *.pt
 *.pb
+*.csv
