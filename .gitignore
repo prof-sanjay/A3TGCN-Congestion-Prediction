@@ -39,3 +39,9 @@ dist/
 *.pt
 *.pb
 *.csv
+
+# Large datasets
+*.npy
+*.npz
+*.hdf5
+*.h5
