@@ -177,7 +177,7 @@ sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 sess.run(tf.global_variables_initializer())
 
 #out = 'out/%s'%(model_name)
-out = 'outpemsdyn2/%s'%(model_name)
+out = 'Without Validation/outpems/%s'%(model_name)
 path1 = '%s_%s_lr%r_batch%r_unit%r_seq%r_pre%r_trsample%r_epoch%r'%(model_name,data_name,lr,batch_size,gru_units,seq_len,pre_len,train_rate,training_epoch)
 path = os.path.join(out,path1)
 if not os.path.exists(path):
@@ -209,11 +209,11 @@ test_loss,test_rmse,test_mae,test_acc,test_r2,test_var,test_pred = [],[],[],[],[
 
 #dynamic learning rate
 
-best_rmse = float('inf')
-bad_epochs = 0
-patience = 2
-factor = 0.5
-min_lr = 1e-5
+# best_rmse = float('inf')
+# bad_epochs = 0
+# patience = 2
+# factor = 0.5
+# min_lr = 1e-5
 
 
 print("========== STARTING TRAINING ==========")
@@ -284,34 +284,34 @@ for epoch in range(training_epoch):
 
     #check whether rmse improved
 
-    if rmse < best_rmse:
-        best_rmse = rmse
-        bad_epochs = 0
-    else:
-        bad_epochs += 1
+    # if rmse < best_rmse:
+    #     best_rmse = rmse
+    #     bad_epochs = 0
+    # else:
+    #     bad_epochs += 1
 
-    if bad_epochs >= patience:
-        current_lr = sess.run(lr_var)
-        new_lr = max(
-            current_lr * factor,
-            min_lr
-        )
+    # if bad_epochs >= patience:
+    #     current_lr = sess.run(lr_var)
+    #     new_lr = max(
+    #         current_lr * factor,
+    #         min_lr
+    #     )
 
-        sess.run(
-            tf.assign(
-                lr_var,
-                new_lr
-            )
-        )
+    #     sess.run(
+    #         tf.assign(
+    #             lr_var,
+    #             new_lr
+    #         )
+    #     )
 
-        print(
-            "Learning rate reduced:",
-            current_lr,
-            "->",
-            new_lr
-        )
+    #     print(
+    #         "Learning rate reduced:",
+    #         current_lr,
+    #         "->",
+    #         new_lr
+    #     )
 
-        bad_epochs = 0
+    #     bad_epochs = 0
 
     test_label1 = test_label * max_value
     test_output1 = test_output * max_value
